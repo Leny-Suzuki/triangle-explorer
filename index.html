@@ -1,0 +1,56 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>直角三角形 条件探究ツール</title><style>body{font-family:system-ui,sans-serif;margin:0;background:#f5f7fb;color:#17243b}.wrap{max-width:920px;margin:auto;padding:20px}h1{font-size:1.45rem}.panel{background:white;border:1px solid #dce3ef;border-radius:14px;padding:18px;margin:14px 0}button{color:#17243b;-webkit-text-fill-color:#17243b;border:1px solid #bcc8db;border-radius:9px;background:white;padding:10px 14px;font-size:1rem;cursor:pointer}button[aria-pressed=true]{color:#123b70;-webkit-text-fill-color:#123b70;background:#dbeafe;border-color:#3276c5;font-weight:bold}button.locked{color:#14532d;-webkit-text-fill-color:#14532d;background:#d8f4e3;border:2px solid #17834e}#lockmsg{color:#12643e;font-weight:700}.controls{display:flex;flex-wrap:wrap;gap:8px}.row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}svg{width:100%;max-width:600px;touch-action:none;background:#fcfdff;border-radius:12px}#handle{cursor:grab}small,.muted{color:#57657a}.status{font-weight:600}input[type=range]{width:220px}#log{white-space:pre-wrap}</style></head><body><main class="wrap"><h1>直角三角形の合同条件を探そう</h1><p>辺と角を自由に選んで固定し、青い点を動かしてみよう。固定した条件を守りながら、別の直角三角形を作れるかな？</p><section class="panel"><strong>① 固定したい情報を選ぶ</strong><p class="muted">直角 ∠C＝90° はいつも固定されています。</p><div class="controls" id="buttons"></div><p><button id="apply">選んだ条件を固定する</button> <button id="clear">固定をすべて外す</button> <button id="reset">最初の三角形に戻す</button></p><p id="lockmsg">現在、固定されている条件はありません。</p><small>青く選択してから「選んだ条件を固定する」を押してください。固定中の条件は緑色で表示されます。</small></section><section class="panel"><strong>② 青い点を動かす</strong><div class="row"><svg id="view" viewBox="0 0 600 380" role="img" aria-label="直角三角形ABC。Cが直角で、Bをドラッグして底辺、Aをドラッグして高さを調整する"><path id="triangle" fill="#e8f2ff" stroke="#1c4c87" stroke-width="3"/><path d="M100 300h19v-19h-19" fill="none" stroke="#1c4c87" stroke-width="2"/><circle id="handleA" r="11" fill="#1874d2"/><circle id="handleB" r="11" fill="#1874d2"/><text id="labelA" font-size="20">A</text><text x="79" y="323" font-size="20">C</text><text id="labelB" font-size="20">B</text></svg><div><div id="metrics"></div><p class="status" id="status"></p><p class="muted" style="max-width:240px">点Aは上下、点Bは左右に動かせます。固定条件を満たす範囲で変形します。</p></div></div></section><section class="panel"><strong>③ 条件をコピーする</strong><p>固定した条件をコピーして、予想や理由はロイロノートで考えよう。</p><p><button id="copy">条件をコピー</button></p><p id="copyStatus" role="status" aria-live="polite" class="muted"></p><textarea id="copyFallback" readonly aria-label="コピー用テキスト" style="display:none;width:100%;box-sizing:border-box;min-height:90px;font:inherit;border:1px solid #bcc8db;border-radius:8px;padding:10px"></textarea></section></main><script>
+const labels={AB:'斜辺 AB',AC:'辺 AC',BC:'辺 BC',A:'鋭角 ∠A',B:'鋭角 ∠B'};let selected=new Set(),fixed=new Set(),base={w:260,h:170},cur={...base};const btns=document.getElementById('buttons');Object.entries(labels).forEach(([id,name])=>{let b=document.createElement('button');b.textContent=name;b.setAttribute('aria-pressed','false');b.onclick=()=>{selected.has(id)?selected.delete(id):selected.add(id);b.setAttribute('aria-pressed',String(selected.has(id)))};btns.append(b)});
+const angA=(w,h)=>Math.atan2(w,h),angB=(w,h)=>Math.atan2(h,w);const value=(id,p)=>id==='AB'?Math.hypot(p.w,p.h):id==='AC'?p.h:id==='BC'?p.w:id==='A'?angA(p.w,p.h):angB(p.w,p.h);
+function allowed(p){return [...fixed].every(id=>Math.abs(value(id,p)-value(id,base))<1e-5)}
+function oldSolve(target,axis){let ids=[...fixed],w=cur.w,h=cur.h;if(!ids.length){return axis==='w'?{w:target,h}:{w,h:target}};const angle=ids.find(id=>id==='A'||id==='B');const side=ids.find(id=>id==='AB'||id==='AC'||id==='BC');if(!side&&!angle){return axis==='w'?{w:target,h}:{w,h:target}};
+if(angle&&!side){let ratio=base.h/base.w;return axis==='w'?{w:target,h:target*ratio}:{w:target/ratio,h:target}}
+if(side){if(side==='AB'){let L=value('AB',base);if(axis==='w'){w=Math.min(target,L-.001);h=Math.sqrt(Math.max(0,L*L-w*w))}else{h=Math.min(target,L-.001);w=Math.sqrt(Math.max(0,L*L-h*h))}}else if(side==='AC'){h=base.h;if(axis==='w')w=target}else{w=base.w;if(axis==='h')h=target}}
+if(angle){w=base.w;h=base.h}let p={w,h};return allowed(p)?p:{...base}}
+function solve(target,axis){
+  // 直角三角形の自由度は幅wと高さhの2つ。固定条件を厳密に満たす解のみ許す。
+  const ids=[...fixed], w0=base.w,h0=base.h;
+  if(!ids.length)return axis==='w'?{w:target,h:cur.h}:{w:cur.w,h:target};
+  const side=ids.find(id=>['AB','AC','BC'].includes(id));
+  const angle=ids.find(id=>['A','B'].includes(id));
+  const ratio=h0/w0;
+  let candidates=[];
+  if(angle){
+    // 角だけなら相似拡大・縮小可能。辺も固定なら一意。
+    if(side)return {...base};
+    candidates.push(axis==='w'?{w:target,h:target*ratio}:{w:target/ratio,h:target});
+  }else if(side==='AB'){
+    const L=Math.hypot(w0,h0);
+    if(axis==='w' && target<L)candidates.push({w:target,h:Math.sqrt(L*L-target*target)});
+    if(axis==='h' && target<L)candidates.push({w:Math.sqrt(L*L-target*target),h:target});
+  }else if(side==='AC'){
+    candidates.push(axis==='w'?{w:target,h:h0}:{w:cur.w,h:h0});
+  }else if(side==='BC'){
+    candidates.push(axis==='h'?{w:w0,h:target}:{w:w0,h:cur.h});
+  }
+  // 独立な条件が2つ以上ある場合、全条件を満たすときだけ変形を許す。
+  for(const p of candidates){if(Number.isFinite(p.w)&&Number.isFinite(p.h)&&allowed(p))return p}
+  return {...cur};
+}
+function updateLockUI(){
+  btns.querySelectorAll('button').forEach((b,i)=>{let id=Object.keys(labels)[i];b.classList.toggle('locked',fixed.has(id));});
+  document.getElementById('lockmsg').textContent=fixed.size?'固定中：'+[...fixed].map(id=>labels[id]).join('、'):'現在、固定されている条件はありません。';
+}
+function draw(){let {w,h}=cur;document.getElementById('triangle').setAttribute('d',`M100 ${300-h} L100 300 L${100+w} 300 Z`);for(let [id,x,y] of [['A',100,300-h],['B',100+w,300]]){document.getElementById('handle'+id).setAttribute('cx',x);document.getElementById('handle'+id).setAttribute('cy',y);document.getElementById('label'+id).setAttribute('x',id==='A'?80:x+14);document.getElementById('label'+id).setAttribute('y',id==='A'?y-12:324)}let deg=x=>(x*180/Math.PI).toFixed(1);document.getElementById('metrics').innerHTML=`<p>AB（斜辺）：${Math.hypot(w,h).toFixed(1)}</p><p>AC：${h.toFixed(1)} ／ BC：${w.toFixed(1)}</p><p>∠A：${deg(angA(w,h))}° ／ ∠B：${deg(angB(w,h))}°</p>`;let moved=Math.hypot(w-base.w,h-base.h)>1;document.getElementById('status').textContent=`固定中：${[...fixed].map(x=>labels[x]).join('、')||'なし'}${moved?' ／ 最初と異なる三角形を作れた':''}`}
+function resetButtons(){selected.clear();btns.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'))}document.getElementById('apply').onclick=()=>{fixed=new Set(selected);base={...cur};updateLockUI();draw()};document.getElementById('clear').onclick=()=>{fixed.clear();resetButtons();base={...cur};updateLockUI();draw()};document.getElementById('reset').onclick=()=>{cur={w:260,h:170};base={...cur};updateLockUI();draw()};
+let dragging=null;function coord(e){let r=document.getElementById('view').getBoundingClientRect();return{x:(e.clientX-r.left)*600/r.width,y:(e.clientY-r.top)*380/r.height}}for(let id of ['A','B']){let el=document.getElementById('handle'+id);el.addEventListener('pointerdown',e=>{dragging=id;el.setPointerCapture(e.pointerId)});el.addEventListener('pointermove',e=>{if(dragging!==id)return;let p=coord(e),axis=id==='A'?'h':'w',v=Math.max(35,Math.min(axis==='w'?450:260,axis==='w'?p.x-100:300-p.y));let next=solve(v,axis);if(next.w>=35&&next.h>=35&&next.w<=450&&next.h<=260){cur=next;draw()}});el.addEventListener('pointerup',()=>dragging=null);el.addEventListener('pointercancel',()=>dragging=null)}document.getElementById('copy').onclick=async()=>{
+  const content=`固定した条件：${[...fixed].map(x=>labels[x]).join('、')||'なし'}`;
+  const status=document.getElementById('copyStatus');
+  const fallback=document.getElementById('copyFallback');
+  let copied=false;
+  if(navigator.clipboard && window.isSecureContext){
+    try {await navigator.clipboard.writeText(content);copied=true;}catch(e){}
+  }
+  if(!copied){
+    fallback.style.display='block';fallback.value=content;
+    fallback.focus();fallback.select();fallback.setSelectionRange(0,content.length);
+    try {copied=document.execCommand('copy');}catch(e){}
+  }
+  if(copied){status.textContent='コピーしました。ロイロノートなどに貼り付けられます。';fallback.style.display='none';}
+  else {status.textContent='自動コピーが制限されています。下の文字を選択したまま、Macは⌘C、WindowsはCtrl+Cでコピーしてください。';fallback.style.display='block';fallback.focus();fallback.select();}
+};updateLockUI();draw();
+</script></body></html>
